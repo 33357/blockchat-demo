@@ -847,9 +847,9 @@ export default function App() {
     <main className="app">
       <aside className="sidebar" aria-label="Token rooms">
         <div className="brand">
-          <div className="mark">TC</div>
+          <div className="mark">BC</div>
           <div>
-            <h1>Token Chat</h1>
+            <h1>blockchat</h1>
             <p>Web3 持仓聊天室</p>
           </div>
           <button className="reset-btn" type="button" title="重置为初始数据" onClick={resetApp}>
@@ -1204,7 +1204,7 @@ function RoomAvatar({ token }: { token?: Token }) {
 
   return (
     <span className="room-avatar" style={getAvatarStyle(seed)} aria-hidden="true">
-      <span>{token?.symbol.slice(0, 2) || "TC"}</span>
+      <span>{token?.symbol.slice(0, 2) || "BC"}</span>
     </span>
   );
 }

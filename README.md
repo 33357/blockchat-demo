@@ -42,7 +42,7 @@ GitHub 仓库：
 https://github.com/33357/blockchat-demo
 ```
 
-首次使用时，需要在 GitHub 仓库设置中开启 Pages：
+工作流会在首次运行时尝试自动启用 Pages，并配置为 GitHub Actions 发布源。如果自动启用失败，可以在 GitHub 仓库设置中手动开启：
 
 1. 打开仓库 `Settings`。
 2. 进入 `Pages`。

@@ -28,6 +28,8 @@ type ChatMessage = {
   symbol: string;
   createdAt: number;
   redPacketId?: string;
+  kind?: "chat" | "governance";
+  governanceType?: "election" | "impeachment";
 };
 
 type RedPacket = {
@@ -57,6 +59,7 @@ type ElectionData = {
 type PersistedState = {
   tokens: Token[];
   messages: Record<string, ChatMessage[]>;
+  pinnedMessages: Record<string, string[]>;
   holders: Record<string, Record<string, string>>;
   electedAdmins: Record<string, string>;
   activeElections: Record<string, ElectionData>;
@@ -164,6 +167,7 @@ const loadState = (): PersistedState => {
     return {
       tokens: Array.from(tokenMap.values()),
       messages: filterRemovedRooms(mergeMessages(fallback.messages, saved.messages || {})),
+      pinnedMessages: filterRemovedRooms({ ...fallback.pinnedMessages, ...(saved.pinnedMessages || {}) }),
       holders: filterRemovedRooms(mergeHolders(fallback.holders, saved.holders || {})),
       electedAdmins: filterRemovedRooms({ ...fallback.electedAdmins, ...savedElectedAdmins }),
       activeElections: filterRemovedRooms(savedActiveElections),
@@ -201,7 +205,13 @@ export default function App() {
     () => persisted.tokens.find((token) => normalizeAddress(token.address) === normalizeAddress(activeRoom)),
     [activeRoom, persisted.tokens]
   );
-  const roomMessages = selectedToken ? persisted.messages[normalizeAddress(selectedToken.address)] || [] : [];
+  const selectedRoomKey = selectedToken ? normalizeAddress(selectedToken.address) : "";
+  const roomMessages = selectedRoomKey ? persisted.messages[selectedRoomKey] || [] : [];
+  const roomPinnedMessages = selectedRoomKey
+    ? (persisted.pinnedMessages[selectedRoomKey] || [])
+        .map((messageId) => roomMessages.find((message) => message.id === messageId))
+        .filter((message): message is ChatMessage => Boolean(message))
+    : [];
   const roomHolders = selectedToken ? getRoomHolders(persisted.holders, selectedToken.address) : [];
   const selectedBalance = selectedToken
     ? balances[selectedToken.address] || balances[normalizeAddress(selectedToken.address)]
@@ -212,6 +222,8 @@ export default function App() {
   const roomAdmin = selectedToken
     ? getEffectiveAdmin(persisted.holders, persisted.electedAdmins, persisted.impeachedAdmins, selectedToken.address)
     : "";
+  const activeElection = selectedRoomKey ? persisted.activeElections[selectedRoomKey] : undefined;
+  const activeImpeachment = selectedRoomKey ? persisted.activeImpeachment[selectedRoomKey] : undefined;
 
   const commitState = useCallback((next: PersistedState) => {
     setPersisted(next);
@@ -482,8 +494,13 @@ export default function App() {
   );
 
   const startImpeachment = useCallback(
-    (token: Token) => {
+    (token: Token, declaration: string) => {
       if (!account) return;
+      const cleanDeclaration = declaration.trim();
+      if (!cleanDeclaration) {
+        showNotice("请先填写弹劾宣言");
+        return;
+      }
       const roomKey = normalizeAddress(token.address);
       const currentAdmin = getEffectiveAdmin(
         persisted.holders,
@@ -500,9 +517,27 @@ export default function App() {
         BigInt(myRawBalance) >= BigInt(stakeAmount)
           ? (BigInt(myRawBalance) - BigInt(stakeAmount)).toString()
           : myRawBalance;
+      const messageId = createMessageId("impeach");
+      const startedAt = Date.now();
+      const message: ChatMessage = {
+        id: messageId,
+        room: roomKey,
+        address: account,
+        text: `我已发起弹劾投票，弹劾宣言：${cleanDeclaration}`,
+        rawBalance: myRawBalance,
+        symbol: token.symbol,
+        createdAt: startedAt,
+        kind: "governance",
+        governanceType: "impeachment"
+      };
 
       const nextState: PersistedState = {
         ...persisted,
+        messages: {
+          ...persisted.messages,
+          [roomKey]: [...(persisted.messages[roomKey] || []), message]
+        },
+        pinnedMessages: pinRoomMessage(persisted.pinnedMessages, roomKey, messageId),
         holders: {
           ...persisted.holders,
           [roomKey]: { ...persisted.holders[roomKey], [normalizeAddress(account)]: myAfterStake }
@@ -512,7 +547,7 @@ export default function App() {
           [roomKey]: {
             targetAdmin: normalizeAddress(currentAdmin),
             initiator: normalizeAddress(account),
-            startedAt: Date.now(),
+            startedAt,
             votes: [normalizeAddress(account)],
             stakeAmount
           }
@@ -525,27 +560,52 @@ export default function App() {
   );
 
   const startAdminElection = useCallback(
-    (token: Token) => {
+    (token: Token, declaration: string) => {
+      if (!account) return;
+      const cleanDeclaration = declaration.trim();
+      if (!cleanDeclaration) {
+        showNotice("请先填写选举宣言");
+        return;
+      }
       const roomKey = normalizeAddress(token.address);
       if (persisted.activeElections[roomKey]) return;
       if (getRoomHolders(persisted.holders, token.address).length === 0) {
         showNotice("暂无可选成员");
         return;
       }
+      const messageId = createMessageId("election");
+      const startedAt = Date.now();
+      const rawBalance = persisted.holders[roomKey]?.[normalizeAddress(account)] || "0";
+      const message: ChatMessage = {
+        id: messageId,
+        room: roomKey,
+        address: account,
+        text: `我已发起选举投票，选举宣言：${cleanDeclaration}`,
+        rawBalance,
+        symbol: token.symbol,
+        createdAt: startedAt,
+        kind: "governance",
+        governanceType: "election"
+      };
 
       commitState({
         ...persisted,
+        messages: {
+          ...persisted.messages,
+          [roomKey]: [...(persisted.messages[roomKey] || []), message]
+        },
+        pinnedMessages: pinRoomMessage(persisted.pinnedMessages, roomKey, messageId),
         activeElections: {
           ...persisted.activeElections,
           [roomKey]: {
-            startedAt: Date.now(),
+            startedAt,
             votes: {}
           }
         }
       });
       showNotice(`已开启 ${token.symbol} 管理员选举，投票窗口 24 小时`);
     },
-    [commitState, persisted, showNotice]
+    [account, commitState, persisted, showNotice]
   );
 
   const castAdminElectionVote = useCallback(
@@ -976,6 +1036,20 @@ export default function App() {
           </button>
         </header>
 
+        <div className="pinned-slot">
+          {selectedToken && roomPinnedMessages.length > 0 ? (
+            <GovernancePinnedMessages
+              token={selectedToken}
+              pinnedMessages={roomPinnedMessages}
+              activeElection={activeElection}
+              activeImpeachment={activeImpeachment}
+              onOpenManage={() => setRoomManageOpen(true)}
+              onExpireElection={() => finalizeAdminElection(selectedToken)}
+              onExpireImpeach={() => cleanExpiredImpeachment(selectedToken)}
+            />
+          ) : null}
+        </div>
+
         {!selectedToken ? (
           <div className="empty-state">
             <h3>用钱包持仓进入对应 Token 房间</h3>
@@ -986,7 +1060,10 @@ export default function App() {
             {roomMessages.map((message) => {
               const isMine = normalizeAddress(message.address) === normalizeAddress(account);
               return (
-                <li className={`message ${isMine ? "mine" : ""}`} key={message.id}>
+                <li
+                  className={`message ${isMine ? "mine" : ""} ${message.kind === "governance" ? "governance" : ""}`}
+                  key={message.id}
+                >
                   <Avatar
                     address={message.address}
                     rank={getHolderRank(persisted.holders, message.room, message.address)}
@@ -1003,6 +1080,7 @@ export default function App() {
                     />
                   ) : (
                     <div className="message-bubble">
+                      {message.kind === "governance" ? <span className="message-kicker">置顶事件</span> : null}
                       <p className="message-body">{message.text}</p>
                       <time className="message-time" dateTime={new Date(message.createdAt).toISOString()}>
                         {formatTime(message.createdAt)}
@@ -1127,13 +1205,13 @@ export default function App() {
           members={roomHolders}
           currentAccount={account}
           adminAddress={roomAdmin}
-          activeElection={persisted.activeElections[normalizeAddress(selectedToken.address)]}
-          activeImpeachment={persisted.activeImpeachment[normalizeAddress(selectedToken.address)]}
+          activeElection={activeElection}
+          activeImpeachment={activeImpeachment}
           onLeave={() => leaveRoom(selectedToken)}
-          onStartElection={() => startAdminElection(selectedToken)}
+          onStartElection={(declaration) => startAdminElection(selectedToken, declaration)}
           onVoteElection={(candidate) => castAdminElectionVote(selectedToken, candidate)}
           onExpireElection={() => finalizeAdminElection(selectedToken)}
-          onStartImpeach={() => startImpeachment(selectedToken)}
+          onStartImpeach={(declaration) => startImpeachment(selectedToken, declaration)}
           onVoteImpeach={() => castImpeachVote(selectedToken)}
           onExpireImpeach={() => cleanExpiredImpeachment(selectedToken)}
           onClose={() => setRoomManageOpen(false)}
@@ -1214,6 +1292,75 @@ function RoomAvatar({ token }: { token?: Token }) {
 const IMPEACH_DURATION_MS = 24 * 60 * 60 * 1000;
 const ELECTION_DURATION_MS = 24 * 60 * 60 * 1000;
 
+function GovernancePinnedMessages({
+  token,
+  pinnedMessages,
+  activeElection,
+  activeImpeachment,
+  onOpenManage,
+  onExpireElection,
+  onExpireImpeach
+}: {
+  token: Token;
+  pinnedMessages: ChatMessage[];
+  activeElection?: ElectionData;
+  activeImpeachment?: ImpeachmentData;
+  onOpenManage: () => void;
+  onExpireElection: () => void;
+  onExpireImpeach: () => void;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!activeElection && !activeImpeachment) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [activeElection, activeImpeachment]);
+
+  const electionRemainingMs = activeElection ? activeElection.startedAt + ELECTION_DURATION_MS - now : 0;
+  const impeachmentRemainingMs = activeImpeachment ? activeImpeachment.startedAt + IMPEACH_DURATION_MS - now : 0;
+  const electionExpired = Boolean(activeElection && electionRemainingMs <= 0);
+  const impeachmentExpired = Boolean(activeImpeachment && impeachmentRemainingMs <= 0);
+
+  useEffect(() => {
+    if (electionExpired) onExpireElection();
+  }, [electionExpired, onExpireElection]);
+
+  useEffect(() => {
+    if (impeachmentExpired) onExpireImpeach();
+  }, [impeachmentExpired, onExpireImpeach]);
+
+  const latestPinned = pinnedMessages[0];
+  if (!latestPinned) return null;
+
+  const isElectionPin = latestPinned.governanceType === "election";
+  const isImpeachmentPin = latestPinned.governanceType === "impeachment";
+  const statusText =
+    isElectionPin && activeElection && !electionExpired
+      ? formatCountdown(electionRemainingMs)
+      : isImpeachmentPin && activeImpeachment && !impeachmentExpired
+        ? formatCountdown(impeachmentRemainingMs)
+        : "置顶";
+
+  return (
+    <div className="pinned-stack" aria-label="置顶消息">
+      <button
+        className={`pinned-message${isImpeachmentPin ? " pinned-message-warning" : ""}`}
+        type="button"
+        onClick={onOpenManage}
+      >
+        <span className="pinned-accent" />
+        <span className="pinned-icon">📌</span>
+        <span className="pinned-copy">
+          <strong>{token.symbol} 置顶消息</strong>
+          <span>{latestPinned.text}</span>
+        </span>
+        <span className="pinned-time">{statusText}</span>
+      </button>
+    </div>
+  );
+}
+
 function RoomManageSheet({
   token,
   memberCount,
@@ -1241,16 +1388,19 @@ function RoomManageSheet({
   activeElection?: ElectionData;
   activeImpeachment?: ImpeachmentData;
   onLeave: () => void;
-  onStartElection: () => void;
+  onStartElection: (declaration: string) => void;
   onVoteElection: (candidateAddress: string) => void;
   onExpireElection: () => void;
-  onStartImpeach: () => void;
+  onStartImpeach: (declaration: string) => void;
   onVoteImpeach: () => void;
   onExpireImpeach: () => void;
   onClose: () => void;
 }) {
   const [now, setNow] = useState(() => Date.now());
   const [confirming, setConfirming] = useState(false);
+  const [electionConfirming, setElectionConfirming] = useState(false);
+  const [impeachDeclaration, setImpeachDeclaration] = useState("");
+  const [electionDeclaration, setElectionDeclaration] = useState("");
 
   useEffect(() => {
     if (!activeImpeachment && !activeElection) return;
@@ -1351,7 +1501,7 @@ function RoomManageSheet({
                     aria-modal="true"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <h4>确认启动弹劾？</h4>
+                    <h4>填写弹劾宣言</h4>
                     <p>
                       启动需支付{" "}
                       <strong>
@@ -1360,6 +1510,16 @@ function RoomManageSheet({
                       。
                     </p>
                     <p>投票窗口 24 小时，超过半数持仓支持即弹劾成功，费用全额返还；否则费用归管理员。</p>
+                    <label className="declaration-field">
+                      弹劾宣言
+                      <textarea
+                        rows={3}
+                        maxLength={180}
+                        value={impeachDeclaration}
+                        placeholder="写下发起弹劾的理由"
+                        onChange={(event) => setImpeachDeclaration(event.target.value)}
+                      />
+                    </label>
                     <div className="impeach-dialog-actions">
                       <button type="button" onClick={() => setConfirming(false)}>
                         取消
@@ -1367,12 +1527,14 @@ function RoomManageSheet({
                       <button
                         className="impeach-dialog-ok"
                         type="button"
+                        disabled={!impeachDeclaration.trim()}
                         onClick={() => {
                           setConfirming(false);
-                          onStartImpeach();
+                          onStartImpeach(impeachDeclaration);
+                          setImpeachDeclaration("");
                         }}
                       >
-                        确认支付
+                        发送并置顶
                       </button>
                     </div>
                   </div>
@@ -1422,12 +1584,53 @@ function RoomManageSheet({
                 <span>当前管理员</span>
                 <strong>暂无管理员</strong>
               </div>
-              <button type="button" onClick={onStartElection}>
+              <button type="button" onClick={() => setElectionConfirming(true)}>
                 开启投票选举管理员
               </button>
             </div>
           )}
         </div>
+
+        {electionConfirming && (
+          <div className="impeach-dialog-backdrop" role="presentation" onClick={() => setElectionConfirming(false)}>
+            <div
+              className="impeach-dialog"
+              role="alertdialog"
+              aria-modal="true"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <h4>填写选举宣言</h4>
+              <p>启动后会发送一条选举消息，并自动置顶。投票窗口 24 小时。</p>
+              <label className="declaration-field">
+                选举宣言
+                <textarea
+                  rows={3}
+                  maxLength={180}
+                  value={electionDeclaration}
+                  placeholder="写下开启管理员选举的理由"
+                  onChange={(event) => setElectionDeclaration(event.target.value)}
+                />
+              </label>
+              <div className="impeach-dialog-actions">
+                <button type="button" onClick={() => setElectionConfirming(false)}>
+                  取消
+                </button>
+                <button
+                  className="impeach-dialog-ok"
+                  type="button"
+                  disabled={!electionDeclaration.trim()}
+                  onClick={() => {
+                    setElectionConfirming(false);
+                    onStartElection(electionDeclaration);
+                    setElectionDeclaration("");
+                  }}
+                >
+                  发送并置顶
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="manage-list">
           <div>
@@ -1672,6 +1875,7 @@ function createSeededState(): PersistedState {
         )
       ]
     },
+    pinnedMessages: {},
     electedAdmins: {
       [ethRoom]: normalizeAddress(DEMO_USERS[0])
     },
@@ -1781,6 +1985,19 @@ function rememberHolder(
         [holderKey]: rawBalance || "0"
       }
     }
+  };
+}
+
+function createMessageId(prefix = "msg") {
+  return crypto.randomUUID ? crypto.randomUUID() : `${prefix}-${Date.now()}-${Math.random()}`;
+}
+
+function pinRoomMessage(pinnedMessages: PersistedState["pinnedMessages"], roomKey: string, messageId: string) {
+  const normalizedRoom = normalizeAddress(roomKey);
+  const existing = pinnedMessages[normalizedRoom] || [];
+  return {
+    ...pinnedMessages,
+    [normalizedRoom]: [messageId, ...existing.filter((id) => id !== messageId)].slice(0, 3)
   };
 }
 

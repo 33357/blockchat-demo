@@ -554,7 +554,7 @@ textarea:focus {
 .chat {
   display: grid;
   min-height: 0;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   background: #ffffff;
 }
 
@@ -650,6 +650,104 @@ textarea:focus {
   transform: none;
 }
 
+.pinned-slot {
+  min-height: 0;
+}
+
+.pinned-stack {
+  display: grid;
+  gap: 1px;
+  border-bottom: 1px solid var(--line);
+  background: #ffffff;
+}
+
+.pinned-message {
+  display: grid;
+  grid-template-columns: 3px 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 54px;
+  border: 0;
+  border-radius: 0;
+  background: #ffffff;
+  padding: 8px 26px;
+  text-align: left;
+}
+
+.pinned-message:hover:not(:disabled) {
+  background: #f5f8fb;
+  transform: none;
+}
+
+.pinned-accent {
+  width: 3px;
+  height: 34px;
+  border-radius: 999px;
+  background: #2aabee;
+}
+
+.pinned-message-warning .pinned-accent {
+  background: #f09a32;
+}
+
+.pinned-icon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 999px;
+  background: #e8f5ff;
+  font-size: 14px;
+}
+
+.pinned-message-warning .pinned-icon {
+  background: #fff2df;
+}
+
+.pinned-copy {
+  display: block;
+  min-width: 0;
+}
+
+.pinned-copy strong,
+.pinned-copy span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pinned-copy strong {
+  color: #172026;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.pinned-copy span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pinned-time {
+  min-width: 72px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 28px;
+  text-align: center;
+  padding: 0 10px;
+}
+
+.pinned-message-warning .pinned-time {
+  background: #fff4e8;
+  color: #b45f00;
+}
+
 .empty-state {
   display: grid;
   align-content: center;
@@ -738,6 +836,23 @@ textarea:focus {
   left: auto;
   clip-path: polygon(0 0, 100% 100%, 0 100%);
   background: #dff0ff;
+}
+
+.message.governance .message-bubble {
+  border-color: rgba(42, 171, 238, 0.28);
+  background: #f4fbff;
+}
+
+.message.governance .message-bubble::before {
+  background: #f4fbff;
+}
+
+.message-kicker {
+  display: block;
+  margin-bottom: 3px;
+  color: #2aabee;
+  font-size: 11px;
+  font-weight: 900;
 }
 
 .message-body {
@@ -1141,6 +1256,24 @@ textarea:focus {
 
 .impeach-dialog strong {
   color: var(--ink);
+}
+
+.declaration-field {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.declaration-field textarea {
+  min-height: 88px;
+  resize: none;
+  border-radius: 12px;
+  background: #f8fafb;
+  line-height: 1.5;
+  padding: 10px 12px;
 }
 
 .impeach-dialog-actions {
@@ -1648,10 +1781,22 @@ textarea:focus {
   }
 
   .chat-header,
+  .pinned-message,
   .messages,
   .composer {
     padding-right: 16px;
     padding-left: 16px;
+  }
+
+  .pinned-message {
+    grid-template-columns: 3px 24px minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .pinned-time {
+    min-width: 62px;
+    font-size: 11px;
+    padding: 0 8px;
   }
 
   .emoji-panel {

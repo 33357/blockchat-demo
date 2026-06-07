@@ -847,7 +847,9 @@ export default function App() {
     <main className="app">
       <aside className="sidebar" aria-label="Token rooms">
         <div className="brand">
-          <div className="mark">BC</div>
+          <div className="mark" aria-hidden="true">
+            <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
+          </div>
           <div>
             <h1>blockchat</h1>
             <p>Web3 持仓聊天室</p>

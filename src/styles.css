@@ -132,14 +132,19 @@ button:disabled {
 }
 
 .mark {
-  display: grid;
   width: 44px;
   height: 44px;
-  place-items: center;
-  border-radius: 8px;
-  background: #172026;
-  color: #ffffff;
-  font-weight: 800;
+  flex: 0 0 44px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #061f68;
+  box-shadow: 0 8px 18px rgba(8, 40, 120, 0.18);
+}
+
+.mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .brand h1,

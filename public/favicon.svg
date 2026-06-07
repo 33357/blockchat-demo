@@ -1,0 +1,46 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(128 121) rotate(90) scale(152)">
+      <stop stop-color="#082c8f"/>
+      <stop offset="0.58" stop-color="#061f68"/>
+      <stop offset="1" stop-color="#020617"/>
+    </radialGradient>
+    <linearGradient id="bubble" x1="52" y1="67" x2="197" y2="205" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#74fff1"/>
+      <stop offset="0.43" stop-color="#06a9ff"/>
+      <stop offset="0.73" stop-color="#2547ff"/>
+      <stop offset="1" stop-color="#a026ff"/>
+    </linearGradient>
+    <linearGradient id="face" x1="80" y1="74" x2="176" y2="170" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#18e7ff"/>
+      <stop offset="0.48" stop-color="#0875ff"/>
+      <stop offset="1" stop-color="#6f22ff"/>
+    </linearGradient>
+    <filter id="shadow" x="23" y="36" width="211" height="194" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#020617" flood-opacity="0.55"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="10" flood-color="#2ee9ff" flood-opacity="0.28"/>
+    </filter>
+    <filter id="dotShadow" x="72" y="104" width="111" height="54" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#072056" flood-opacity="0.65"/>
+    </filter>
+  </defs>
+
+  <rect width="256" height="256" rx="54" fill="url(#bg)"/>
+
+  <g filter="url(#shadow)">
+    <path d="M128 42c48.601 0 88 36.937 88 82.5S176.601 207 128 207c-17.778 0-34.325-4.943-48.157-13.44L45 209l13.273-36.119C46.713 158.458 40 140.502 40 124.5 40 78.937 79.399 42 128 42Z" fill="url(#bubble)"/>
+    <path d="M128 55c41.421 0 75 31.116 75 69.5S169.421 194 128 194c-16.034 0-30.89-4.663-43.078-12.607l-25.568 10.753 9.714-26.847C60.325 153.455 55 139.294 55 124.5 55 86.116 88.579 55 128 55Z" fill="#071e6c" fill-opacity="0.45"/>
+    <path d="M128 62c36.451 0 66 26.863 66 60s-29.549 60-66 60c-13.521 0-26.092-3.694-36.553-10.029L71 180.7l7.354-21.333C68.236 148.741 62 135.092 62 122c0-33.137 29.549-60 66-60Z" fill="url(#face)"/>
+    <path d="M55 173.5 46.5 196l22.9-9.9 22.1-9.1-20.4-9.6L55 173.5Z" fill="#16cfff"/>
+    <path d="M128 46c46.392 0 84 35.146 84 78.5" stroke="white" stroke-width="4" stroke-linecap="round" opacity="0.88"/>
+    <path d="M60 169c-9.2-11.578-14-25.054-14-39" stroke="#8ffcff" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+    <path d="M207 75c13.554 12.162 22 28.888 22 47.5 0 8.153-1.617 15.941-4.555 23.113" stroke="#4b62ff" stroke-width="8" stroke-linecap="round" opacity="0.52"/>
+    <path d="M228 97h-22M232 119h-21M228 141h-22M219 163h-20" stroke="#091b63" stroke-width="5" stroke-linecap="round" opacity="0.6"/>
+  </g>
+
+  <g filter="url(#dotShadow)">
+    <circle cx="92" cy="124" r="11" fill="#f4ffff"/>
+    <circle cx="128" cy="124" r="11" fill="#f4ffff"/>
+    <circle cx="164" cy="124" r="11" fill="#f4ffff"/>
+  </g>
+</svg>

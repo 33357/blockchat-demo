@@ -32,6 +32,28 @@ yarn dev
 yarn build
 ```
 
+## GitHub 自动部署
+
+项目已配置 GitHub Actions 自动部署到 GitHub Pages。推送到 `main` 分支后，工作流会自动安装依赖、构建项目，并把 `dist` 发布到 GitHub Pages。
+
+GitHub 仓库：
+
+```text
+https://github.com/33357/blockchat-demo
+```
+
+首次使用时，需要在 GitHub 仓库设置中开启 Pages：
+
+1. 打开仓库 `Settings`。
+2. 进入 `Pages`。
+3. 在 `Build and deployment` 的 `Source` 中选择 `GitHub Actions`。
+
+部署完成后，默认访问地址为：
+
+```text
+https://33357.github.io/blockchat-demo/
+```
+
 ## 项目功能
 
 - 钱包连接和断开：支持连接 MetaMask 或兼容 Web3 钱包，连接后读取当前账户和链信息。
